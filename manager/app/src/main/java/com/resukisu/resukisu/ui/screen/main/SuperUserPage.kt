@@ -101,8 +101,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
-import com.ramcosta.composedestinations.generated.destinations.AppProfileScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ksuApp
@@ -112,6 +110,8 @@ import com.resukisu.resukisu.ui.component.VerticalExpandableFab
 import com.resukisu.resukisu.ui.component.pinnedScrollBehavior
 import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
 import com.resukisu.resukisu.ui.component.settings.splicedLazyColumnGroup
+import com.resukisu.resukisu.ui.navigation.LocalNavigator
+import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.screen.LabelText
 import com.resukisu.resukisu.ui.util.LocalSnackbarHost
 import com.resukisu.resukisu.ui.util.module.ModuleModify
@@ -135,7 +135,7 @@ data class BottomSheetMenuItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: HazeState?) {
+fun SuperUserPage(bottomPadding: Dp, hazeState: HazeState?) {
     val context = LocalContext.current
     val viewModel = viewModel<SuperUserViewModel>(
         viewModelStoreOwner = ksuApp
@@ -151,7 +151,7 @@ fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState
     val backupLauncher = ModuleModify.rememberAllowlistBackupLauncher(context, snackBarHostState)
     val restoreLauncher = ModuleModify.rememberAllowlistRestoreLauncher(context, snackBarHostState)
 
-    LaunchedEffect(navigator) {
+    LaunchedEffect(Unit) {
         viewModel.search = ""
     }
 
@@ -254,7 +254,6 @@ fun SuperUserPage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState
             filteredAndSortedAppGroups = filteredAndSortedAppGroups,
             listState = listState,
             scrollBehavior = scrollBehavior,
-            navigator = navigator,
             scope = scope,
             bottomPadding = bottomPadding,
             hazeState = hazeState
@@ -332,11 +331,11 @@ private fun SuperUserContent(
     filteredAndSortedAppGroups: List<SuperUserViewModel.AppGroup>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     scrollBehavior: SearchBarScrollBehavior,
-    navigator: DestinationsNavigator,
     scope: CoroutineScope,
     bottomPadding: Dp,
     hazeState: HazeState?
 ) {
+    val navigator = LocalNavigator.current
     val pullRefreshState = rememberPullToRefreshState()
 
     if (filteredAndSortedAppGroups.isEmpty()) {
@@ -436,7 +435,7 @@ private fun SuperUserContent(
                         if (viewModel.showBatchActions) {
                             appGroup.packageNames.forEach { viewModel.toggleAppSelection(it) }
                         } else {
-                            navigator.navigate(AppProfileScreenDestination(appGroup))
+                            navigator.push(Route.AppProfile(appGroup))
                         }
                     },
                     onLongClick = {

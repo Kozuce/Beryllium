@@ -70,15 +70,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
-import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.annotation.RootGraph
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ui.component.ConfirmResult
 import com.resukisu.resukisu.ui.component.SearchAppBar
 import com.resukisu.resukisu.ui.component.pinnedScrollBehavior
 import com.resukisu.resukisu.ui.component.rememberConfirmDialog
 import com.resukisu.resukisu.ui.component.rememberLoadingDialog
+import com.resukisu.resukisu.ui.navigation.LocalNavigator
 import com.resukisu.resukisu.ui.theme.ThemeConfig
 import com.resukisu.resukisu.ui.theme.getCardColors
 import com.resukisu.resukisu.ui.theme.getCardElevation
@@ -156,9 +154,8 @@ private fun loadExcludedSubTypes(context: Context): Set<LogExclType> {
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Destination<RootGraph>
 @Composable
-fun LogViewerScreen(navigator: DestinationsNavigator) {
+fun LogViewerScreen() {
     val scrollBehavior = pinnedScrollBehavior()
     val snackBarHost = LocalSnackbarHost.current
     val context = LocalContext.current
@@ -269,9 +266,13 @@ fun LogViewerScreen(navigator: DestinationsNavigator) {
     Scaffold(
         topBar = {
             Column {
+                val navigator = LocalNavigator.current
+                val clearLogs = stringResource(R.string.log_viewer_clear_logs)
+                val clearLogsConfirm = stringResource(R.string.log_viewer_clear_logs_confirm)
+                val logsCleared = stringResource(R.string.log_viewer_logs_cleared)
                 SearchAppBar(
                     scrollBehavior = scrollBehavior,
-                    onBackClick = { navigator.navigateUp() },
+                    onBackClick = { navigator.pop() },
                     searchText = searchQuery,
                     onSearchTextChange = { searchQuery = it },
                     searchBarPlaceHolderText = stringResource(R.string.log_viewer_search_placeholder),
@@ -285,15 +286,15 @@ fun LogViewerScreen(navigator: DestinationsNavigator) {
                         IconButton(onClick = {
                             scope.launch {
                                 val result = confirmDialog.awaitConfirm(
-                                    title = context.getString(R.string.log_viewer_clear_logs),
-                                    content = context.getString(R.string.log_viewer_clear_logs_confirm)
+                                    title = clearLogs,
+                                    content = clearLogsConfirm
                                 )
                                 if (result == ConfirmResult.Confirmed) {
                                     loadingDialog.withLoading {
                                         clearLogs()
                                         loadPage(0, true)
                                     }
-                                    snackBarHost.showSnackbar(context.getString(R.string.log_viewer_logs_cleared))
+                                    snackBarHost.showSnackbar(logsCleared)
                                 }
                             }
                         }) {

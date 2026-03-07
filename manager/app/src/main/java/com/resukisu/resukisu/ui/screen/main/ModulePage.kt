@@ -125,11 +125,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kyant.capsule.ContinuousRoundedRectangle
-import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
-import com.ramcosta.composedestinations.generated.destinations.ModuleRepoScreenDestination
-import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import com.resukisu.resukisu.Natives
 import com.resukisu.resukisu.R
 import com.resukisu.resukisu.ksuApp
@@ -147,6 +142,8 @@ import com.resukisu.resukisu.ui.component.settings.SettingsBaseWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsJumpPageWidget
 import com.resukisu.resukisu.ui.component.settings.SettingsTextFieldWidget
 import com.resukisu.resukisu.ui.component.settings.SplicedColumnGroup
+import com.resukisu.resukisu.ui.navigation.LocalNavigator
+import com.resukisu.resukisu.ui.navigation.Route
 import com.resukisu.resukisu.ui.screen.FlashIt
 import com.resukisu.resukisu.ui.screen.LabelText
 import com.resukisu.resukisu.ui.theme.getCardColors
@@ -182,7 +179,8 @@ private enum class ShortcutType {
 @SuppressLint("ResourceType", "AutoboxingStateCreation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: HazeState?) {
+fun ModulePage(bottomPadding: Dp, hazeState: HazeState?) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val viewModel = viewModel<ModuleViewModel>(
         viewModelStoreOwner = ksuApp
@@ -205,8 +203,8 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
         zipFiles = pendingZipFiles,
         onConfirm = { info ->
             showConfirmationDialog = false
-            navigator.navigate(
-                FlashScreenDestination(
+            navigator.push(
+                Route.Flash(
                     FlashIt.FlashModules(ArrayList(info.filter { it.type == ZipType.MODULE }.map { it.uri }))
                 )
             )
@@ -286,6 +284,7 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
     }
 
     LaunchedEffect(Unit) {
+        viewModel.search = ""
         if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
             viewModel.sortEnabledFirst = prefs.getBoolean("module_sort_enabled_first", false)
             viewModel.sortActionFirst = prefs.getBoolean("module_sort_action_first", false)
@@ -307,7 +306,7 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
                 dropdownContent = {
                     IconButton(
                         onClick = {
-                            navigator.navigate(ModuleRepoScreenDestination)
+                            navigator.push(Route.ModuleRepo)
                         }
                     ) {
                         Icon(
@@ -418,15 +417,14 @@ fun ModulePage(navigator: DestinationsNavigator, bottomPadding: Dp, hazeState: H
             }
             else -> {
                 ModuleList(
-                    navigator = navigator,
                     viewModel = viewModel,
                     listState = listState,
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                     onInstallModule = {
-                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModule(it)))
+                        navigator.push(Route.Flash(FlashIt.FlashModule(it)))
                     },
                     onUpdateModule = {
-                        navigator.navigate(FlashScreenDestination(FlashIt.FlashModuleUpdate(it)))
+                        navigator.push(Route.Flash(FlashIt.FlashModuleUpdate(it)))
                     },
                     onClickModule = { id, name, hasWebUi ->
                         val currentTime = System.currentTimeMillis()
@@ -661,7 +659,6 @@ private fun MetaModuleWarningCard(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ModuleList(
-    navigator: DestinationsNavigator,
     viewModel: ModuleViewModel,
     listState: LazyListState,
     modifier: Modifier = Modifier,
@@ -993,7 +990,6 @@ private fun ModuleList(
             ) { module ->
                 ModuleItem(
                     viewModel = viewModel,
-                    navigator = navigator,
                     module = module,
                     updateUrl = module.moduleUpdate?.zipUrl.orEmpty(),
                     onUninstallClicked = {
@@ -1256,7 +1252,6 @@ private fun ModuleList(
 @Composable
 fun ModuleItem(
     viewModel: ModuleViewModel,
-    navigator: DestinationsNavigator,
     module: ModuleViewModel.ModuleInfo,
     updateUrl: String,
     onUninstallClicked: (ModuleViewModel.ModuleInfo) -> Unit,
@@ -1265,6 +1260,7 @@ fun ModuleItem(
     onClick: (ModuleViewModel.ModuleInfo) -> Unit,
     onModuleAddShortcut: (ModuleViewModel.ModuleInfo) -> Unit,
 ) {
+    val navigator = LocalNavigator.current
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("settings", MODE_PRIVATE)
     val isHideTagRow = prefs.getBoolean("is_hide_tag_row", false)
@@ -1476,7 +1472,7 @@ fun ModuleItem(
                         modifier = Modifier.defaultMinSize(minWidth = 52.dp, minHeight = 32.dp),
                         enabled = !module.remove && module.enabled,
                         onClick = {
-                            navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
+                            navigator.push(Route.ExecuteModuleAction(module.dirId))
                             viewModel.markNeedRefresh()
                         },
                         contentPadding = ButtonDefaults.TextButtonContentPadding,
@@ -1573,7 +1569,6 @@ fun ModuleItemPreview() {
     )
     ModuleItem(
         viewModel<ModuleViewModel>(),
-        EmptyDestinationsNavigator,
         module,
         "",
         {},
