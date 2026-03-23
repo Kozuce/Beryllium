@@ -596,6 +596,59 @@ static int s_show(struct seq_file *m, void *p)
 {
 	struct kallsym_iter *iter = m->private;
 
+	/* Some debugging symbols have no name.  Ignore them. */
+	if (!iter->name[0])
+		return 0;
+
+	if (iter->module_name[0]) {
+		char type;
+
+		/*
+		 * Label it "global" if it is exported,
+		 * "local" if not exported.
+		 */
+		type = iter->exported ? toupper(iter->type) :
+					tolower(iter->type);
+		seq_printf(m, "%pK %c %s\t[%s]\n", (void *)iter->value,
+			   type, iter->name, iter->module_name);
+	} else
+#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
+			   iter->type, iter->name);
+#else
+	{
+		if (susfs_starts_with(iter->name, "ksu_") ||
+			susfs_starts_with(iter->name, "__ksu_") ||
+			susfs_starts_with(iter->name, "susfs_") ||
+			susfs_starts_with(iter->name, "ksud") ||
+			susfs_starts_with(iter->name, "is_ksu_") ||
+			susfs_starts_with(iter->name, "is_manager_") ||
+			susfs_starts_with(iter->name, "escape_to_") ||
+			susfs_starts_with(iter->name, "setup_selinux") ||
+			susfs_starts_with(iter->name, "track_throne") ||
+			susfs_starts_with(iter->name, "on_post_fs_data") ||
+			susfs_starts_with(iter->name, "try_umount") ||
+			susfs_starts_with(iter->name, "kernelsu") ||
+			susfs_starts_with(iter->name, "__initcall__kmod_kernelsu") ||
+			susfs_starts_with(iter->name, "apply_kernelsu") ||
+			susfs_starts_with(iter->name, "handle_sepolicy") ||
+			susfs_starts_with(iter->name, "getenforce") ||
+			susfs_starts_with(iter->name, "setenforce") ||
+			susfs_starts_with(iter->name, "is_zygote"))
+		{
+			return 0;
+		}
+		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
+                          iter->type, iter->name);
+	}
+#endif
+	return 0;
+}
+
+/*static int s_show(struct seq_file *m, void *p)
+{
+	struct kallsym_iter *iter = m->private;
+
 	if (!iter->name[0])
 		return 0;
 #ifdef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
@@ -611,7 +664,7 @@ static int s_show(struct seq_file *m, void *p)
 		   iter->type, iter->name);
 
 	return 0;
-}
+}*/
 
 static const struct seq_operations kallsyms_op = {
 	.start = s_start,
