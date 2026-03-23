@@ -50,11 +50,6 @@
 
 #include "usb.h"
 
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-#include <linux/utsname.h>
-extern void susfs_spoof_uname(struct new_utsname* tmp);
-#endif
-
 /*-------------------------------------------------------------------------*/
 
 /*
@@ -447,6 +442,10 @@ ascii2desc(char const *s, u8 *buf, unsigned len)
  * Return: The number of bytes filled in: the length of the descriptor or
  * of the provided buffer, whichever is less.
  */
+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+extern void susfs_spoof_uname(struct new_utsname* tmp);
+#endif
+
 static unsigned
 rh_string(int id, struct usb_hcd const *hcd, u8 *data, unsigned len)
 {
@@ -473,18 +472,30 @@ rh_string(int id, struct usb_hcd const *hcd, u8 *data, unsigned len)
 		break;
 	case 3:
 		/* Manufacturer */
-		snprintf (buf, sizeof buf, "%s %s %s", init_utsname()->sysname,
-			init_utsname()->release, hcd->driver->description);
+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+	{
+		struct new_utsname tmp;
+
+		down_read(&uts_sem);
+		memcpy(&tmp, init_utsname(), sizeof(tmp));
+		up_read(&uts_sem);
+
+		susfs_spoof_uname(&tmp);
+
+		snprintf(buf, sizeof buf, "%s %s %s", tmp.sysname,
+			tmp.release, hcd->driver->description);
+	}
+#else
+		snprintf(buf, sizeof buf, "Linux xhci-hcd");
+#endif
 		s = buf;
 		break;
 	default:
-		/* Can't happen; caller guarantees it */
 		return 0;
 	}
 
 	return ascii2desc(s, data, len);
 }
-
 
 /* Root hub control transfers execute synchronously */
 static int rh_call_control (struct usb_hcd *hcd, struct urb *urb)
